@@ -1,4 +1,4 @@
-name: Build Firmware
+name: ZMK Build
 
 on:
   push:
@@ -6,6 +6,37 @@ on:
 
 jobs:
   build:
-    uses: zmkfirmware/zmk/.github/workflows/build.yml@main
-    with:
-      config_path: config
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/zmkfirmware/zmk-build-arm:stable
+    steps:
+      - name: Checkout user config
+        uses: actions/checkout@v4
+        with:
+          path: config
+
+      - name: Checkout ZMK
+        uses: actions/checkout@v4
+        with:
+          repository: zmkfirmware/zmk
+          path: zmk
+          ref: main
+
+      - name: West init
+        run: west init -l config
+
+      - name: West update
+        run: west update
+
+      - name: West zephyr-export
+        run: west zephyr-export
+
+      - name: Build firmware
+        run: |
+          west build -p -b nice_nano_v2 -- -DSHIELD=my_5x7 -DZMK_CONFIG=config
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: build/zephyr/zmk.uf2
